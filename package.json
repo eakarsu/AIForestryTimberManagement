@@ -1,0 +1,19 @@
+{
+  "name": "ai-forestry-timber-management",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:server": "nodemon server/index.js",
+    "dev:client": "cd client && npm run dev",
+    "install:all": "npm install && cd client && npm install"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "pg": "^8.12.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "nodemon": "^3.1.0"
+  }
+}
