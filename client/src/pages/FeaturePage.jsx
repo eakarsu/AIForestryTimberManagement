@@ -191,6 +191,39 @@ const featureConfig = {
     statusField: 'status',
     statusColors: { Passed: '#16a34a', 'Passed with Conditions': '#eab308', Failed: '#dc2626', Approved: '#0891b2', Active: '#6366f1', Verified: '#16a34a', Cleared: '#84cc16', Pending: '#94a3b8' },
   },
+  'safety-incidents': {
+    endpoint: '/api/safety-incidents',
+    columns: ['incident_type', 'severity', 'plot_id', 'worker_id', 'near_miss', 'occurred_at'],
+    columnLabels: ['Type', 'Severity', 'Plot', 'Worker', 'Near Miss', 'When'],
+    fields: [
+      { name: 'incident_type', label: 'Incident Type', type: 'text', required: true },
+      { name: 'severity', label: 'Severity', type: 'select', options: ['Low', 'Moderate', 'High', 'Critical'] },
+      { name: 'description', label: 'Description', type: 'textarea' },
+      { name: 'plot_id', label: 'Plot ID', type: 'number' },
+      { name: 'worker_id', label: 'Worker ID', type: 'number' },
+      { name: 'near_miss', label: 'Near Miss?', type: 'select', options: ['true', 'false'] },
+      { name: 'root_cause', label: 'Root Cause (if known)', type: 'textarea' },
+    ],
+    statusField: 'severity',
+    statusColors: { Low: '#16a34a', Moderate: '#eab308', High: '#f97316', Critical: '#dc2626' },
+  },
+  'market-prices': {
+    endpoint: '/api/market-prices',
+    columns: ['species', 'grade', 'price_per_m3', 'region', 'recorded_at'],
+    columnLabels: ['Species', 'Grade', 'Price/m³', 'Region', 'Recorded'],
+    fields: [
+      { name: 'species', label: 'Species', type: 'text', required: true },
+      { name: 'grade', label: 'Grade', type: 'select', options: ['Ultra Premium', 'Premium', 'Select', 'Standard', 'Utility', 'Pulpwood'] },
+      { name: 'price_per_m3', label: 'Price per m³ ($)', type: 'number', step: '0.01' },
+      { name: 'region', label: 'Region', type: 'text' },
+    ],
+  },
+  'ai-results': {
+    endpoint: '/api/ai-results',
+    columns: ['analysis_type', 'entity_type', 'entity_id', 'model', 'created_at'],
+    columnLabels: ['Type', 'Entity', 'Entity ID', 'Model', 'Created'],
+    fields: [],
+  },
 };
 
 const aiConfig = {
@@ -258,14 +291,24 @@ export default function FeaturePage({ token, feature, title, isAI }) {
   const config = isAI ? aiConfig[feature] : featureConfig[feature];
   const headers = { Authorization: `Bearer ${token}` };
 
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
   const fetchItems = useCallback(async () => {
     if (isAI) { setLoading(false); return; }
     try {
-      const res = await axios.get(config.endpoint, { headers });
-      setItems(res.data);
+      const res = await axios.get(`${config.endpoint}?page=${page}&limit=20`, { headers });
+      // Support both paginated and legacy array responses
+      if (res.data && Array.isArray(res.data.data)) {
+        setItems(res.data.data);
+        setTotalPages(res.data.pagination?.totalPages || 1);
+      } else if (Array.isArray(res.data)) {
+        setItems(res.data);
+        setTotalPages(1);
+      }
     } catch (err) { console.error(err); }
     setLoading(false);
-  }, [feature]);
+  }, [feature, page]);
 
   useEffect(() => {
     setSelectedItem(null);
@@ -519,6 +562,13 @@ export default function FeaturePage({ token, feature, title, isAI }) {
           </tbody>
         </table>
       </div>
+      {totalPages > 1 && (
+        <div className="pagination">
+          <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Prev</button>
+          <span>Page {page} of {totalPages}</span>
+          <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next</button>
+        </div>
+      )}
     </div>
   );
 }

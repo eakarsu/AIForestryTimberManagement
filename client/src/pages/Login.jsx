@@ -5,6 +5,8 @@ import { GiPineTree } from 'react-icons/gi';
 export default function Login({ onLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [mode, setMode] = useState('login'); // 'login' | 'register'
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -13,10 +15,12 @@ export default function Login({ onLogin }) {
     setLoading(true);
     setError('');
     try {
-      const res = await axios.post('/api/auth/login', { email, password });
+      const url = mode === 'register' ? '/api/auth/register' : '/api/auth/login';
+      const body = mode === 'register' ? { name, email, password } : { email, password };
+      const res = await axios.post(url, body);
       onLogin(res.data.token, res.data.user);
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed');
+      setError(err.response?.data?.error || `${mode === 'register' ? 'Registration' : 'Login'} failed`);
     }
     setLoading(false);
   };
@@ -38,6 +42,18 @@ export default function Login({ onLogin }) {
           <p>AI Forestry & Timber Management Platform</p>
         </div>
         <form onSubmit={handleSubmit}>
+          {mode === 'register' && (
+            <div className="form-group">
+              <label>Full Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Enter your full name"
+                required
+              />
+            </div>
+          )}
           <div className="form-group">
             <label>Email Address</label>
             <input
@@ -56,14 +72,20 @@ export default function Login({ onLogin }) {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
               required
+              minLength={6}
             />
           </div>
           {error && <div className="error-msg">{error}</div>}
           <button type="submit" className="login-btn" disabled={loading}>
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? (mode === 'register' ? 'Creating account...' : 'Signing in...') : (mode === 'register' ? 'Create Account' : 'Sign In')}
           </button>
-          <button type="button" className="demo-btn" onClick={populateCredentials}>
-            Use Demo Credentials
+          {mode === 'login' && (
+            <button type="button" className="demo-btn" onClick={populateCredentials}>
+              Use Demo Credentials
+            </button>
+          )}
+          <button type="button" className="demo-btn" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); }}>
+            {mode === 'login' ? 'Need an account? Register' : 'Have an account? Sign in'}
           </button>
         </form>
       </div>
