@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import FeaturePage from './pages/FeaturePage';
 import AIToolsPage, { AIVisionPage } from './pages/AIToolsPage';
 import AIEquipmentMaintenance from './pages/AIEquipmentMaintenance';
+import CrewWeatherSafety from './pages/CrewWeatherSafety';
 import Sidebar from './components/Sidebar';
 
 // === Batch 04 Gaps & Frontend Mounts ===
@@ -24,6 +25,11 @@ import GapNoEquipmentFleetCrudBeyondPredictiv from './pages/GapNoEquipmentFleetC
 import GapNoCostTrackingPlModule from './pages/GapNoCostTrackingPlModule';
 import GapNoRealIotMqttBrokerTelemetry from './pages/GapNoRealIotMqttBrokerTelemetry';
 import GapMonolithicStructureMakesRouteDiscove from './pages/GapMonolithicStructureMakesRouteDiscove';
+
+import CodexCustomVizFeature from './pages/CodexCustomVizFeature';
+import CodexOperationsFeature from './pages/CodexOperationsFeature';
+
+import TimelineView from './pages/TimelineView';
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
@@ -53,6 +59,10 @@ function App() {
         <Sidebar user={user} onLogout={handleLogout} />
         <main className="main-content">
           <Routes>
+        <Route path="/insights/timeline" element={<TimelineView />} />
+        <Route path="/codex/custom-viz" element={<CodexCustomVizFeature />} />
+        <Route path="/codex/operations" element={<CodexOperationsFeature />} />
+
             <Route path="/" element={<Dashboard token={token} />} />
             <Route path="/tree-inventory" element={<FeaturePage token={token} feature="tree-inventory" title="Tree Inventory" />} />
             <Route path="/harvest-plans" element={<FeaturePage token={token} feature="harvest-plans" title="Sustainable Harvest Plans" />} />
@@ -81,6 +91,7 @@ function App() {
             <Route path="/ai/equipment-maintenance" element={<AIEquipmentMaintenance token={token} />} />
             <Route path="/ai/reforestation-plan" element={<AIToolsPage token={token} tool="reforestation-plan" />} />
             <Route path="/ai/compliance-review" element={<AIToolsPage token={token} tool="compliance-review" />} />
+            <Route path="/crew-weather-safety" element={<CrewWeatherSafety token={token} />} />
           {/* // === Batch 04 Gaps & Frontend Mounts === */}
           <Route path="/cf-agentic-forest-planning-multi-agent-syst" element={<CfAgenticForestPlanningMultiAgentSyst />} />
           <Route path="/cf-drone-fused-canopy-cv-extend-canopy" element={<CfDroneFusedCanopyCvExtendCanopy />} />

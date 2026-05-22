@@ -824,6 +824,7 @@ try {
 app.use('/api/agentic-forest-plan', require('./routes/agenticForestPlanner')(pool));
 app.use('/api/buyer-demand', require('./routes/buyerDemandMatcher')(pool));
 app.use('/api/carbon-arbitrage', require('./routes/carbonArbitrage')(pool));
+app.use('/api/crew-weather-safety', require('./routes/crewWeatherSafety'));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 
