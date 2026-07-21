@@ -7,20 +7,13 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const rateLimit = require('express-rate-limit');
 
-// === Batch 04 Gaps & Frontend Mounts ===
-const route_gap_no_dedicated_wildfire_spread_simulation_ = require('./routes/gap-no-dedicated-wildfire-spread-simulation-');
-const route_gap_no_vendorsupplier_matching_ai_only_telem = require('./routes/gap-no-vendorsupplier-matching-ai-only-telem');
-const route_gap_no_labor_scheduling_ai_for_field = require('./routes/gap-no-labor-scheduling-ai-for-field');
-const route_gap_no_soprag_over_forestry_regulations_defe = require('./routes/gap-no-soprag-over-forestry-regulations-defe');
-const route_gap_no_modular_tree_inventory_crud_only = require('./routes/gap-no-modular-tree-inventory-crud-only');
-const route_gap_no_teamshift_scheduling_for_field_operat = require('./routes/gap-no-teamshift-scheduling-for-field-operat');
-const route_gap_no_equipment_fleet_crud_beyond_predictiv = require('./routes/gap-no-equipment-fleet-crud-beyond-predictiv');
-const route_gap_no_cost_tracking_pl_module = require('./routes/gap-no-cost-tracking-pl-module');
-const route_gap_no_real_iot_mqtt_broker_telemetry = require('./routes/gap-no-real-iot-mqtt-broker-telemetry');
-const route_gap_monolithic_structure_makes_route_discove = require('./routes/gap-monolithic-structure-makes-route-discove');
 const app = express();
 const PORT = process.env.PORT || 3001;
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required');
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  throw new Error('JWT_SECRET must be configured with at least 32 characters');
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Production hardening
 app.use(helmet({ contentSecurityPolicy: false }));
@@ -47,79 +40,7 @@ const aiRateLimiter = rateLimit({
   message: { error: 'Too many AI requests; limit is 20 per hour.' }
 });
 
-// Schema bootstrap — adds ai_results table + ensures ai_analysis JSONB columns
-pool.query(`
-  CREATE TABLE IF NOT EXISTS ai_results (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER,
-    entity_type VARCHAR(100),
-    entity_id INTEGER,
-    analysis_type VARCHAR(100),
-    model VARCHAR(255),
-    raw_response TEXT,
-    parsed_data JSONB,
-    created_at TIMESTAMP DEFAULT NOW()
-  );
-  CREATE INDEX IF NOT EXISTS idx_ai_results_entity ON ai_results(entity_type, entity_id);
-  CREATE INDEX IF NOT EXISTS idx_ai_results_user ON ai_results(user_id);
-
-  CREATE TABLE IF NOT EXISTS safety_incidents (
-    id SERIAL PRIMARY KEY,
-    incident_type VARCHAR(100),
-    severity VARCHAR(50),
-    description TEXT,
-    plot_id INTEGER,
-    worker_id INTEGER,
-    occurred_at TIMESTAMP DEFAULT NOW(),
-    near_miss BOOLEAN DEFAULT false,
-    root_cause TEXT,
-    ai_analysis JSONB,
-    created_at TIMESTAMP DEFAULT NOW()
-  );
-
-  CREATE TABLE IF NOT EXISTS market_prices (
-    id SERIAL PRIMARY KEY,
-    species VARCHAR(255),
-    grade VARCHAR(100),
-    price_per_m3 DECIMAL(12,2),
-    region VARCHAR(255),
-    recorded_at TIMESTAMP DEFAULT NOW()
-  );
-
-  CREATE TABLE IF NOT EXISTS weather_alerts (
-    id SERIAL PRIMARY KEY,
-    region VARCHAR(255),
-    alert_type VARCHAR(100),
-    severity VARCHAR(50),
-    payload JSONB,
-    ai_analysis JSONB,
-    created_at TIMESTAMP DEFAULT NOW()
-  );
-`).catch(err => console.warn('[Schema] bootstrap warning:', err.message));
-
-pool.query(`
-  DO $$
-  BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='tree_inventory') THEN
-      BEGIN ALTER TABLE tree_inventory ADD COLUMN IF NOT EXISTS ai_analysis JSONB; EXCEPTION WHEN OTHERS THEN NULL; END;
-    END IF;
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='harvest_plans') THEN
-      BEGIN ALTER TABLE harvest_plans ADD COLUMN IF NOT EXISTS ai_analysis JSONB; EXCEPTION WHEN OTHERS THEN NULL; END;
-    END IF;
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='wildfire_assessments') THEN
-      BEGIN ALTER TABLE wildfire_assessments ADD COLUMN IF NOT EXISTS ai_analysis JSONB; EXCEPTION WHEN OTHERS THEN NULL; END;
-    END IF;
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='carbon_credits') THEN
-      BEGIN ALTER TABLE carbon_credits ADD COLUMN IF NOT EXISTS ai_analysis JSONB; EXCEPTION WHEN OTHERS THEN NULL; END;
-    END IF;
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='disease_reports') THEN
-      BEGIN ALTER TABLE disease_reports ADD COLUMN IF NOT EXISTS ai_analysis JSONB; EXCEPTION WHEN OTHERS THEN NULL; END;
-    END IF;
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='compliance_reports') THEN
-      BEGIN ALTER TABLE compliance_reports ADD COLUMN IF NOT EXISTS ai_analysis JSONB; EXCEPTION WHEN OTHERS THEN NULL; END;
-    END IF;
-  END $$;
-`).catch(err => console.warn('[Schema] Column additions warning:', err.message));
+// Schema changes are intentionally out-of-band; use scripts/migrate.sh.
 
 // 3-strategy AI JSON parser
 function parseAIJson(text) {
@@ -152,7 +73,7 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
     if (!email || !password || !name) return res.status(400).json({ error: 'name, email, password required' });
-    if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    if (password.length < 12) return res.status(400).json({ error: 'Password must be at least 12 characters' });
     const exists = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
     if (exists.rows.length > 0) return res.status(409).json({ error: 'Email already registered' });
     const hash = await bcrypt.hash(password, 10);
@@ -161,7 +82,7 @@ app.post('/api/auth/register', async (req, res) => {
       [name, email, hash]
     );
     const user = result.rows[0];
-    const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '24h' });
+    const token = jwt.sign({ id: user.id, email: user.email, name: user.name, role: user.role || 'operator' }, JWT_SECRET, { expiresIn: '24h' });
     res.status(201).json({ token, user });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -176,8 +97,8 @@ app.post('/api/auth/login', async (req, res) => {
     const user = result.rows[0];
     const validPassword = await bcrypt.compare(password, user.password_hash);
     if (!validPassword) return res.status(401).json({ error: 'Invalid credentials' });
-    const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '24h' });
-    res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
+    const token = jwt.sign({ id: user.id, email: user.email, name: user.name, role: user.role || 'operator' }, JWT_SECRET, { expiresIn: '24h' });
+    res.json({ token, user: { id: user.id, email: user.email, name: user.name, role: user.role || 'operator' } });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -825,6 +746,7 @@ app.use('/api/agentic-forest-plan', require('./routes/agenticForestPlanner')(poo
 app.use('/api/buyer-demand', require('./routes/buyerDemandMatcher')(pool));
 app.use('/api/carbon-arbitrage', require('./routes/carbonArbitrage')(pool));
 app.use('/api/crew-weather-safety', require('./routes/crewWeatherSafety'));
+app.use('/api/governed-field-plans', require('./routes/governedFieldPlans')(pool, authenticateToken));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 
@@ -833,17 +755,6 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: err.message });
 });
 
-
-app.use('/api/gap-no-dedicated-wildfire-spread-simulation-', route_gap_no_dedicated_wildfire_spread_simulation_);
-app.use('/api/gap-no-vendorsupplier-matching-ai-only-telem', route_gap_no_vendorsupplier_matching_ai_only_telem);
-app.use('/api/gap-no-labor-scheduling-ai-for-field', route_gap_no_labor_scheduling_ai_for_field);
-app.use('/api/gap-no-soprag-over-forestry-regulations-defe', route_gap_no_soprag_over_forestry_regulations_defe);
-app.use('/api/gap-no-modular-tree-inventory-crud-only', route_gap_no_modular_tree_inventory_crud_only);
-app.use('/api/gap-no-teamshift-scheduling-for-field-operat', route_gap_no_teamshift_scheduling_for_field_operat);
-app.use('/api/gap-no-equipment-fleet-crud-beyond-predictiv', route_gap_no_equipment_fleet_crud_beyond_predictiv);
-app.use('/api/gap-no-cost-tracking-pl-module', route_gap_no_cost_tracking_pl_module);
-app.use('/api/gap-no-real-iot-mqtt-broker-telemetry', route_gap_no_real_iot_mqtt_broker_telemetry);
-app.use('/api/gap-monolithic-structure-makes-route-discove', route_gap_monolithic_structure_makes_route_discove);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
