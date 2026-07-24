@@ -8,6 +8,12 @@ if (process.env.CONFIRM_DEMO_SEED !== 'yes') {
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
+function requireDemoPassword() {
+  const password = process.env.DEMO_PASSWORD || process.env.SEED_DEMO_PASSWORD || process.env.DEMO_SEED_PASSWORD || '';
+  if (password.length < 12 || password.length > 1024) throw new Error('DEMO_PASSWORD must contain 12-1024 characters');
+  return password;
+}
+
 async function seed() {
   console.log('Starting database seed...');
 
@@ -196,12 +202,12 @@ async function seed() {
   console.log('Tables created.');
 
   // Seed users
-  const passwordHash = await bcrypt.hash('admin123', 10);
+  const passwordHash = await bcrypt.hash(requireDemoPassword(), 10);
   await pool.query(
     "INSERT INTO users (name, email, password_hash) VALUES ('Admin User', 'admin@forestry.com', $1)",
     [passwordHash]
   );
-  console.log('User seeded: admin@forestry.com / admin123');
+  console.log('Demo login users provisioned from the local environment.');
 
   // Seed Forest Plots (15 items)
   const forestPlots = [
@@ -464,7 +470,7 @@ async function seed() {
   console.log('Compliance reports seeded: 15 items');
 
   console.log('\nDatabase seeding complete!');
-  console.log('Login: admin@forestry.com / admin123');
+  console.log('Demo login users provisioned from the local environment.');
   pool.end();
 }
 
