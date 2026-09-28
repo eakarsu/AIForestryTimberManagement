@@ -81,7 +81,7 @@ export default function Login({ onLogin }) {
           </button>
           {mode === 'login' && (
             <button type="button" className="demo-btn" onClick={populateCredentials}>
-              Use Demo Credentials
+              Auto Fill Demo Credentials
             </button>
           )}
           <button type="button" className="demo-btn" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); }}>
