@@ -1,3 +1,8 @@
+
+import FullAIExamples, { useFullAIExamples } from "../components/FullAIExamples.jsx";
+import NativeAIControls from "../components/NativeAIControls";
+import useNativeAIRequest from "../components/useNativeAIRequest";
+import FormattedAIReport from "../components/FormattedAIReport";
 import React, { useState } from 'react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
@@ -66,6 +71,10 @@ const toolConfigs = {
 };
 
 export default function AIToolsPage({ token, tool }) {
+  const fullAIExamples = useFullAIExamples();
+
+  const nativeAIRequest = useNativeAIRequest();
+
   const cfg = toolConfigs[tool];
   const [form, setForm] = useState({});
   const [result, setResult] = useState(null);
@@ -82,7 +91,7 @@ export default function AIToolsPage({ token, tool }) {
       if (body.polygon_geojson && typeof body.polygon_geojson === 'string') {
         try { body.polygon_geojson = JSON.parse(body.polygon_geojson); } catch (_) {}
       }
-      const res = await axios.post(cfg.endpoint, body, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await nativeAIRequest.run((signal) => axios.post(cfg.endpoint, body, { ...({ headers: { Authorization: `Bearer ${token}` } }), ...({ signal }) }));
       setResult(res.data);
     } catch (err) {
       setResult({ error: err.response?.data?.error || err.message });
@@ -90,10 +99,10 @@ export default function AIToolsPage({ token, tool }) {
     setLoading(false);
   };
 
-  if (!cfg) return <div className="feature-page"><h1>Unknown tool</h1></div>;
+  if (!cfg) return <div className="feature-page" data-full-ai-workspace="AIToolsPage"><FullAIExamples controller={fullAIExamples} disabled={Boolean(loading)} /><h1>Unknown tool</h1></div>;
 
   return (
-    <div className="feature-page">
+    <NativeAIControls busy={nativeAIRequest.busy} onCancel={nativeAIRequest.cancel} context="Forestry Timber Management"><div data-full-ai-workspace="AIToolsPage"><FullAIExamples controller={fullAIExamples} disabled={Boolean(loading)} /><div className="feature-page">
       <div className="page-header">
         <h1>{cfg.title}</h1>
         <p>{cfg.description}</p>
@@ -104,18 +113,18 @@ export default function AIToolsPage({ token, tool }) {
             <div key={input.name} className="form-group">
               <label>{input.label}</label>
               {input.type === 'textarea' ? (
-                <textarea
+                <textarea data-ai-field={input.name}
                   rows={4}
                   value={form[input.name] || ''}
                   placeholder={input.placeholder || ''}
-                  onChange={(e) => setForm({ ...form, [input.name]: e.target.value })}
+                  onChange={(e) => setForm({ ...form, [input.name]: e.target.value })} data-full-ai-field={fullAIExamples.bind({ current: form[input.name] || '', change: (e) => setForm({ ...form, [input.name]: e.target.value }), label: "form[input.name]", manual: false, json: false }, "p1-4878", [(typeof input === 'object' ? input?.key ?? input?.name ?? input?.id ?? '' : input),input.name].join(":"))}
                 />
               ) : (
-                <input
+                <input data-ai-field={input.name}
                   type={input.type}
                   value={form[input.name] || ''}
                   placeholder={input.placeholder || ''}
-                  onChange={(e) => setForm({ ...form, [input.name]: e.target.value })}
+                  onChange={(e) => setForm({ ...form, [input.name]: e.target.value })} data-full-ai-field={fullAIExamples.bind({ current: form[input.name] || '', change: (e) => setForm({ ...form, [input.name]: e.target.value }), label: "form[input.name]", manual: false, json: false }, "p1-5189", [(typeof input === 'object' ? input?.key ?? input?.name ?? input?.id ?? '' : input),input.name].join(":"))}
                 />
               )}
             </div>
@@ -134,27 +143,22 @@ export default function AIToolsPage({ token, tool }) {
                   <h3>AI Analysis</h3>
                   {result.timestamp && <span className="ai-timestamp">{new Date(result.timestamp).toLocaleString()}</span>}
                 </div>
-                {result.parsed && (
-                  <pre style={{ background: '#0f172a', color: '#e2e8f0', padding: 16, borderRadius: 8, overflow: 'auto', fontSize: 13 }}>
-                    {JSON.stringify(result.parsed, null, 2)}
-                  </pre>
-                )}
-                {result.analysis && (
-                  <div className="ai-result-content">
-                    <ReactMarkdown>{result.analysis}</ReactMarkdown>
-                  </div>
-                )}
+                <FormattedAIReport response={result.parsed || result.analysis || result} />
               </div>
             )}
           </div>
         )}
       </div>
-    </div>
+    </div></div></NativeAIControls>
   );
 }
 
 // Vision-capable AI page (species & disease) supporting image URL list
 export function AIVisionPage({ token, kind }) {
+  const fullAIExamples = useFullAIExamples();
+
+  const nativeAIRequest = useNativeAIRequest();
+
   const cfg = kind === 'species'
     ? {
         title: 'AI Species Identification (Vision)',
@@ -191,7 +195,7 @@ export function AIVisionPage({ token, kind }) {
       const body = { [cfg.textField]: text, image_urls: imageUrls };
       if (kind === 'species' && linkedId) body.tree_id = parseInt(linkedId);
       if (kind === 'disease' && linkedId) body.disease_report_id = parseInt(linkedId);
-      const res = await axios.post(cfg.endpoint, body, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await nativeAIRequest.run((signal) => axios.post(cfg.endpoint, body, { ...({ headers: { Authorization: `Bearer ${token}` } }), ...({ signal }) }));
       setResult(res.data);
     } catch (err) {
       setResult({ error: err.response?.data?.error || err.message });
@@ -200,7 +204,7 @@ export function AIVisionPage({ token, kind }) {
   };
 
   return (
-    <div className="feature-page">
+    <NativeAIControls busy={nativeAIRequest.busy} onCancel={nativeAIRequest.cancel} context="Forestry Timber Management"><div data-full-ai-workspace="AIVisionPage"><FullAIExamples controller={fullAIExamples} disabled={Boolean(loading)} /><div className="feature-page">
       <div className="page-header">
         <h1>{cfg.title}</h1>
         <p>Drone or handheld photos welcome — provide image URLs and optional descriptive text.</p>
@@ -209,16 +213,16 @@ export function AIVisionPage({ token, kind }) {
         <div className="ai-input-section">
           <div className="form-group">
             <label>{cfg.descLabel}</label>
-            <textarea rows={4} value={text} onChange={(e) => setText(e.target.value)} />
+            <textarea data-ai-field="text" rows={4} value={text} onChange={(e) => setText(e.target.value)} data-full-ai-field={fullAIExamples.bind({ current: text, change: (e) => setText(e.target.value), label: "text", manual: false, json: false, sample: '' }, "p1-8904", undefined)} />
           </div>
           <div className="form-group">
             <label>Linked record ID (optional)</label>
-            <input type="number" value={linkedId} onChange={(e) => setLinkedId(e.target.value)} />
+            <input data-ai-field="linkedId" type="number" value={linkedId} onChange={(e) => setLinkedId(e.target.value)} data-full-ai-field={fullAIExamples.bind({ current: linkedId, change: (e) => setLinkedId(e.target.value), label: "linkedId", manual: false, json: false, sample: '' }, "p1-9125", undefined)} />
           </div>
           <div className="form-group">
             <label><FiImage /> Image URL</label>
             <div style={{ display: 'flex', gap: 8 }}>
-              <input value={imageInput} onChange={(e) => setImageInput(e.target.value)} placeholder="https://..." />
+              <input data-ai-field="imageInput" value={imageInput} onChange={(e) => setImageInput(e.target.value)} placeholder="https://..." data-full-ai-field={fullAIExamples.bind({ current: imageInput, change: (e) => setImageInput(e.target.value), label: "imageInput", manual: false, json: false, sample: '' }, "p1-9410", undefined)} />
               <button type="button" onClick={addUrl}>Add</button>
             </div>
             {imageUrls.length > 0 && (
@@ -246,21 +250,12 @@ export function AIVisionPage({ token, kind }) {
                   <h3>Result</h3>
                   {result.timestamp && <span className="ai-timestamp">{new Date(result.timestamp).toLocaleString()}</span>}
                 </div>
-                {result.parsed && (
-                  <pre style={{ background: '#0f172a', color: '#e2e8f0', padding: 16, borderRadius: 8, overflow: 'auto', fontSize: 13 }}>
-                    {JSON.stringify(result.parsed, null, 2)}
-                  </pre>
-                )}
-                {result.analysis && (
-                  <div className="ai-result-content">
-                    <ReactMarkdown>{result.analysis}</ReactMarkdown>
-                  </div>
-                )}
+                <FormattedAIReport response={result.parsed || result.analysis || result} />
               </div>
             )}
           </div>
         )}
       </div>
-    </div>
+    </div></div></NativeAIControls>
   );
 }

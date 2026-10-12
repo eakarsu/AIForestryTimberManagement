@@ -104,6 +104,24 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// The demo account is configured on the server. Its password is never sent to the client.
+app.post('/api/auth/demo-login', rateLimit({ windowMs: 60 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false }), async (_req, res) => {
+  const email = process.env.DEMO_EMAIL;
+  const password = process.env.DEMO_PASSWORD;
+  if (!email || !password) return res.status(503).json({ error: 'Demo login is not configured.' });
+  try {
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    const user = result.rows[0];
+    if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+      return res.status(503).json({ error: 'The configured demo account is unavailable.' });
+    }
+    const token = jwt.sign({ id: user.id, email: user.email, name: user.name, role: user.role || 'operator' }, JWT_SECRET, { expiresIn: '24h' });
+    res.json({ token, user: { id: user.id, email: user.email, name: user.name, role: user.role || 'operator' } });
+  } catch (_error) {
+    res.status(503).json({ error: 'Demo login is currently unavailable.' });
+  }
+});
+
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query('SELECT id, name, email FROM users WHERE id = $1', [req.user.id]);
@@ -750,6 +768,14 @@ app.use('/api/governed-field-plans', require('./routes/governedFieldPlans')(pool
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 
+
+// Advisory AI reports only; native execution and approval routes stay unchanged.
+const aiWorkspaceSupport = require("./aiWorkspaceAdapters.cjs");
+const aiWorkspaceDatabase = pool;
+app.use('/api/report-workspace', require("./aiWorkspace.cjs").createAIWorkspaceRouter({
+  pool: aiWorkspaceDatabase, authenticateToken: authenticateToken,
+  aiRateLimiter: aiWorkspaceSupport.createWorkspaceLimiter(), features: require("./aiWorkspaceFeatures.json"),
+}));
 app.use((err, req, res, next) => {
   console.error('[error]', err.message);
   res.status(500).json({ error: err.message });

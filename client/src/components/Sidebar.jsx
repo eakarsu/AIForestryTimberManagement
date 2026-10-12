@@ -1,3 +1,4 @@
+import AIReportLibrary from "./AIReportLibrary";
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FiHome, FiLogOut, FiChevronDown, FiChevronRight, FiDatabase, FiCpu } from 'react-icons/fi';
@@ -110,6 +111,6 @@ export default function Sidebar({ user, onLogout }) {
           <FiLogOut /> Logout
         </button>
       </div>
-    </aside>
+    <AIReportLibrary /></aside>
   );
 }

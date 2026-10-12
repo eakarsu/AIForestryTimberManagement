@@ -25,9 +25,17 @@ export default function Login({ onLogin }) {
     setLoading(false);
   };
 
-  const populateCredentials = () => {
-    setEmail(import.meta.env.VITE_DEMO_EMAIL || '');
-    setPassword(import.meta.env.VITE_DEMO_PASSWORD || '');
+  const handleDemoLogin = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await axios.post('/api/auth/demo-login');
+      onLogin(res.data.token, res.data.user);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Demo login failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -80,8 +88,8 @@ export default function Login({ onLogin }) {
             {loading ? (mode === 'register' ? 'Creating account...' : 'Signing in...') : (mode === 'register' ? 'Create Account' : 'Sign In')}
           </button>
           {mode === 'login' && (
-            <button type="button" className="demo-btn" onClick={populateCredentials}>
-              Auto Fill Demo Credentials
+            <button type="button" className="demo-btn" onClick={handleDemoLogin} disabled={loading}>
+              {loading ? 'Signing in...' : 'Log In as Demo'}
             </button>
           )}
           <button type="button" className="demo-btn" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); }}>

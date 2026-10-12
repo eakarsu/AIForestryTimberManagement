@@ -1,3 +1,8 @@
+
+import FullAIExamples, { useFullAIExamples } from "../components/FullAIExamples.jsx";
+import NativeAIControls from "../components/NativeAIControls";
+import useNativeAIRequest from "../components/useNativeAIRequest";
+import FormattedAIReport from "../components/FormattedAIReport";
 import React, { useState } from 'react';
 import axios from 'axios';
 import { FiSend, FiLoader } from 'react-icons/fi';
@@ -11,6 +16,10 @@ import { FiSend, FiLoader } from 'react-icons/fi';
  */
 
 export default function AIEquipmentMaintenance({ token }) {
+  const fullAIExamples = useFullAIExamples();
+
+  const nativeAIRequest = useNativeAIRequest();
+
   const [form, setForm] = useState({
     equipment_id: '',
     lookback_days: 90,
@@ -28,11 +37,7 @@ export default function AIEquipmentMaintenance({ token }) {
         lookback_days: form.lookback_days ? Number(form.lookback_days) : undefined,
         notes: form.notes || undefined,
       };
-      const res = await axios.post(
-        '/api/ai/equipment-maintenance',
-        body,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await nativeAIRequest.run((signal) => axios.post('/api/ai/equipment-maintenance', body, { ...({ headers: { Authorization: `Bearer ${token}` } }), ...({ signal }) }));
       setResult(res.data);
     } catch (err) {
       setResult({ error: err.response?.data?.error || err.message });
@@ -41,7 +46,7 @@ export default function AIEquipmentMaintenance({ token }) {
   };
 
   return (
-    <div className="feature-page">
+    <NativeAIControls busy={nativeAIRequest.busy} onCancel={nativeAIRequest.cancel} context="Forestry Timber Management"><div data-full-ai-workspace="AIEquipmentMaintenance"><FullAIExamples controller={fullAIExamples} disabled={Boolean(loading)} /><div className="feature-page">
       <div className="page-header">
         <h1>AI Equipment Maintenance</h1>
         <p>Predicted failures, prioritized actions, spare-parts list, operator training topics, and next service date.</p>
@@ -51,31 +56,31 @@ export default function AIEquipmentMaintenance({ token }) {
         <div className="ai-input-section">
           <div className="form-group">
             <label>Equipment ID (optional)</label>
-            <input
+            <input data-ai-field="equipment_id"
               type="number"
               value={form.equipment_id}
               placeholder="Leave blank to scan all equipment"
-              onChange={(e) => setForm({ ...form, equipment_id: e.target.value })}
+              onChange={(e) => setForm({ ...form, equipment_id: e.target.value })} data-full-ai-field={fullAIExamples.bind({ current: form.equipment_id, change: (e) => setForm({ ...form, equipment_id: e.target.value }), label: "form.equipment_id", manual: false, json: false, sample: '' }, "p1-2076", undefined)}
             />
           </div>
 
           <div className="form-group">
             <label>Lookback (days)</label>
-            <input
+            <input data-ai-field="lookback_days"
               type="number"
               min="1"
               value={form.lookback_days}
-              onChange={(e) => setForm({ ...form, lookback_days: e.target.value })}
+              onChange={(e) => setForm({ ...form, lookback_days: e.target.value })} data-full-ai-field={fullAIExamples.bind({ current: form.lookback_days, change: (e) => setForm({ ...form, lookback_days: e.target.value }), label: "form.lookback_days", manual: false, json: false, sample: 90 }, "p1-2452", undefined)}
             />
           </div>
 
           <div className="form-group">
             <label>Notes / known issues</label>
-            <textarea
+            <textarea data-ai-field="notes"
               rows={3}
               value={form.notes}
               placeholder="Symptoms, recent failures, weather conditions..."
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })} data-full-ai-field={fullAIExamples.bind({ current: form.notes, change: (e) => setForm({ ...form, notes: e.target.value }), label: "form.notes", manual: false, json: false, sample: '' }, "p1-2796", undefined)}
             />
           </div>
 
@@ -108,39 +113,13 @@ export default function AIEquipmentMaintenance({ token }) {
                   )}
                 </div>
                 {result.parsed ? (
-                  <pre
-                    style={{
-                      background: '#0f172a',
-                      color: '#e2e8f0',
-                      padding: 16,
-                      borderRadius: 8,
-                      overflow: 'auto',
-                      fontSize: 13,
-                    }}
-                  >
-                    {JSON.stringify(result.parsed, null, 2)}
-                  </pre>
-                ) : result.raw ? (
-                  <pre style={{ whiteSpace: 'pre-wrap' }}>{result.raw}</pre>
-                ) : (
-                  <pre
-                    style={{
-                      background: '#0f172a',
-                      color: '#e2e8f0',
-                      padding: 16,
-                      borderRadius: 8,
-                      overflow: 'auto',
-                      fontSize: 13,
-                    }}
-                  >
-                    {JSON.stringify(result, null, 2)}
-                  </pre>
-                )}
+                  <FormattedAIReport response={result.parsed} />
+                ) : <FormattedAIReport response={result} />}
               </div>
             )}
           </div>
         )}
       </div>
-    </div>
+    </div></div></NativeAIControls>
   );
 }

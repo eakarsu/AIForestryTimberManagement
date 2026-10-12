@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
+import AIReport from '../components/AIReport';
 import { FiPlus, FiEdit2, FiTrash2, FiArrowLeft, FiSend, FiLoader } from 'react-icons/fi';
 
 const featureConfig = {
@@ -277,6 +278,39 @@ const aiConfig = {
   },
 };
 
+const aiExamples = {
+  'ai-species': [
+    'Example observation: mature deciduous tree in a northeastern mixed forest; opposite branching, broad five-lobed leaves, gray ridged bark, and paired winged seeds. Explain likely species and distinguishing checks.',
+    'Example observation: evergreen on a cool upland slope; flat needles arranged in two rows, small upright cones, and smooth gray bark with resin blisters. Compare likely species and evidence needed.',
+    'Example observation: young riparian tree with alternate serrated leaves, pale peeling bark, and drooping catkins. List possible species, uncertainty, and field identification steps.',
+  ],
+  'ai-harvest': [
+    'Example stand: 42 hectares of mixed oak and maple, ages 55–80 years, moderate density, loam soil, 12% slope, one existing road and a seasonal stream. Prepare a selective harvest plan with buffers and regeneration checks.',
+    'Example stand: 28 hectares of planted pine, age 32 years, high stocking, sandy soil, 6% slope and two road access points. Evaluate a thinning plan, equipment access and residual stand protection.',
+    'Example stand: 65 hectares of mixed conifer, ages 70–100 years, steep western slope, wetland edge and limited road access. Compare low-impact harvest options and certification constraints.',
+  ],
+  'ai-wildfire': [
+    'Example zone: dense pine understory on a 20-degree south-facing slope; seven dry days, 29°C, 28% humidity, 18 mph wind, and homes 800 m away. Assess risk and immediate mitigation.',
+    'Example zone: mixed hardwood stand with moderate leaf litter on a 5-degree north slope; recent 18 mm rain, 22°C, 55% humidity, 8 mph wind, and one access road. Assess risk and monitoring needs.',
+    'Example zone: grass and scrub at a forest edge, heavy cured fuel, 12-degree slope; 33°C, 20% humidity, 24 mph wind, and a maintenance facility 300 m away. Prioritize protective actions.',
+  ],
+  'ai-carbon': [
+    'Example forest: 35 hectares of 40-year mixed pine and oak, 72% canopy cover, loam soil, 980 mm annual rainfall, no recent clearing, and selective thinning every 12 years. Estimate with explicit assumptions.',
+    'Example forest: 20 hectares of newly planted native hardwood on former pasture, age 8 years, 58% canopy cover, clay loam, 1100 mm rainfall and annual survival checks. Explain baseline and uncertainty.',
+    'Example forest: 80 hectares of mature spruce and fir, average age 75 years, 84% canopy cover, acidic soil, 1200 mm rainfall and conservation management. Compare sequestration scenarios.',
+  ],
+  'ai-disease': [
+    'Example symptoms: red maple leaves show scattered brown margins and early drop in late summer; 12 of 40 trees affected after a dry month. No laboratory result. List plausible causes and diagnostic checks.',
+    'Example symptoms: young pines have needle yellowing and resin on lower branches; clustered near wet ground, first noticed three weeks ago. No confirmed pathogen. Prioritize field inspection.',
+    'Example symptoms: oak branches show localized dieback and dark bark lesions; six trees affected across two blocks over one season. Explain differential causes and safe sampling steps.',
+  ],
+  'ai-growth': [
+    'Example stand: red oak, age 30 years, average height 15 m, DBH 22 cm, moderate density, loam soil, 250 m elevation, 1050 mm annual rain, no thinning history. Forecast with uncertainty.',
+    'Example stand: loblolly pine, age 18 years, average height 17 m, DBH 20 cm, high density, sandy loam, 120 m elevation, 1250 mm annual rain and thinning planned. Compare scenarios.',
+    'Example stand: mixed spruce and fir, age 55 years, average height 19 m, DBH 28 cm, cool upland site, shallow soil, 900 mm annual rain, and competing understory. Identify growth limits.',
+  ],
+};
+
 export default function FeaturePage({ token, feature, title, isAI }) {
   const [items, setItems] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -305,8 +339,12 @@ export default function FeaturePage({ token, feature, title, isAI }) {
       } else if (Array.isArray(res.data)) {
         setItems(res.data);
         setTotalPages(1);
+      } else {
+        setItems([]);
+        setTotalPages(1);
+        console.error('Record endpoint returned an unexpected response shape', config.endpoint);
       }
-    } catch (err) { console.error(err); }
+    } catch (err) { setItems([]); console.error(err); }
     setLoading(false);
   }, [feature, page]);
 
@@ -318,6 +356,10 @@ export default function FeaturePage({ token, feature, title, isAI }) {
     setLoading(true);
     fetchItems();
   }, [feature]);
+
+  useEffect(() => {
+    if (page !== 1) { setLoading(true); fetchItems(); }
+  }, [page, fetchItems]);
 
   const handleCreate = () => {
     setEditItem(null);
@@ -374,10 +416,12 @@ export default function FeaturePage({ token, feature, title, isAI }) {
 
   const formatValue = (val) => {
     if (val === null || val === undefined) return '—';
+    if (val === '') return 'Empty string';
     if (typeof val === 'number') return val.toLocaleString();
     if (typeof val === 'string' && val.match(/^\d{4}-\d{2}-\d{2}/)) {
       return new Date(val).toLocaleDateString();
     }
+    if (typeof val === 'object') return JSON.stringify(val);
     return String(val);
   };
 
@@ -390,6 +434,7 @@ export default function FeaturePage({ token, feature, title, isAI }) {
         </div>
         <div className="ai-container">
           <div className="ai-input-section">
+            <div className="ai-preset-bar"><strong>Example scenarios</strong><div className="ai-actions">{(aiExamples[feature] || []).map((example, index) => <button key={index} type="button" className="btn btn-secondary" disabled={aiLoading} onClick={() => setAiInput(example)}>Fill {['field review', 'planning case', 'detailed scenario'][index]}</button>)}</div></div>
             <label>{config.inputLabel}</label>
             <textarea
               value={aiInput}
@@ -424,9 +469,7 @@ export default function FeaturePage({ token, feature, title, isAI }) {
                       {new Date(aiResult.timestamp).toLocaleString()}
                     </span>
                   </div>
-                  <div className="ai-result-content">
-                    <ReactMarkdown>{aiResult.analysis}</ReactMarkdown>
-                  </div>
+                  <AIReport response={aiResult.parsed || aiResult.analysis || aiResult} title={config.title} />
                 </div>
               )}
             </div>
@@ -519,6 +562,8 @@ export default function FeaturePage({ token, feature, title, isAI }) {
                   <span className="status-badge" style={{ background: config.statusColors?.[value] || '#94a3b8' }}>
                     {value}
                   </span>
+                ) : feature === 'ai-results' && (typeof value === 'object' || (typeof value === 'string' && /^[\s]*[\[{]/.test(value))) ? (
+                  <AIReport response={value} title={key.replace(/_/g, ' ')} />
                 ) : formatValue(value)}
               </span>
             </div>
