@@ -536,43 +536,6 @@ export default function FeaturePage({ token, feature, title, isAI }) {
     );
   }
 
-  if (selectedItem) {
-    return (
-      <div className="feature-page">
-        <div className="page-header">
-          <button className="back-btn" onClick={() => setSelectedItem(null)}>
-            <FiArrowLeft /> Back
-          </button>
-          <h1>{title} Details</h1>
-          <div className="header-actions">
-            <button className="edit-btn" onClick={() => handleEdit(selectedItem)}>
-              <FiEdit2 /> Edit
-            </button>
-            <button className="delete-btn" onClick={() => handleDelete(selectedItem.id)}>
-              <FiTrash2 /> Delete
-            </button>
-          </div>
-        </div>
-        <div className="detail-card">
-          {Object.entries(selectedItem).filter(([key]) => key !== 'id').map(([key, value]) => (
-            <div key={key} className="detail-row">
-              <span className="detail-label">{key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
-              <span className="detail-value">
-                {config.statusField === key ? (
-                  <span className="status-badge" style={{ background: config.statusColors?.[value] || '#94a3b8' }}>
-                    {value}
-                  </span>
-                ) : feature === 'ai-results' && (typeof value === 'object' || (typeof value === 'string' && /^[\s]*[\[{]/.test(value))) ? (
-                  <AIReport response={value} title={key.replace(/_/g, ' ')} />
-                ) : formatValue(value)}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="feature-page">
       <div className="page-header">
@@ -612,6 +575,42 @@ export default function FeaturePage({ token, feature, title, isAI }) {
           <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Prev</button>
           <span>Page {page} of {totalPages}</span>
           <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next</button>
+        </div>
+      )}
+      {selectedItem && (
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setSelectedItem(null)}>
+          <div className="detail-card" role="dialog" aria-modal="true" style={{ background: '#1e293b', borderRadius: 16, padding: 24, width: '90%', maxWidth: 720, maxHeight: '88vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div className="page-header" style={{ marginBottom: 16 }}>
+              <h2>{title} Details</h2>
+            </div>
+            <div>
+              {Object.entries(selectedItem).filter(([key]) => key !== 'id').map(([key, value]) => (
+                <div key={key} className="detail-row">
+                  <span className="detail-label">{key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
+                  <span className="detail-value">
+                    {config.statusField === key ? (
+                      <span className="status-badge" style={{ background: config.statusColors?.[value] || '#94a3b8' }}>
+                        {value}
+                      </span>
+                    ) : feature === 'ai-results' && (typeof value === 'object' || (typeof value === 'string' && /^[\s]*[\[{]/.test(value))) ? (
+                      <AIReport response={value} title={key.replace(/_/g, ' ')} />
+                    ) : formatValue(value)}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="header-actions" style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+              <button className="edit-btn" onClick={() => handleEdit(selectedItem)}>
+                <FiEdit2 /> Edit
+              </button>
+              <button className="delete-btn" onClick={() => handleDelete(selectedItem.id)}>
+                <FiTrash2 /> Delete
+              </button>
+              <button className="cancel-btn" onClick={() => setSelectedItem(null)}>
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

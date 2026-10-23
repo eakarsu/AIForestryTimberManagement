@@ -766,6 +766,7 @@ app.use('/api/carbon-arbitrage', require('./routes/carbonArbitrage')(pool));
 app.use('/api/crew-weather-safety', require('./routes/crewWeatherSafety'));
 app.use('/api/governed-field-plans', require('./routes/governedFieldPlans')(pool, authenticateToken));
 
+app.use('/api/feature-pack', require('./routes/featurePack')({ pool, authenticateToken, callOpenRouter }));
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 
 
